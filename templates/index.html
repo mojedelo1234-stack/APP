@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#0c0c0c;color:#e0e0d8;font-family:'DM Mono',monospace}
+  .wrap{max-width:520px;margin:0 auto;padding:40px 24px 80px}
+
+  .top{margin-bottom:36px}
+  .date{font-size:12px;color:#555;letter-spacing:.12em;margin-bottom:6px}
+  .title{font-family:'Bebas Neue',sans-serif;font-size:60px;letter-spacing:.04em;line-height:1;color:#e0e0d8}
+
+  .prog-wrap{margin-bottom:44px}
+  .prog-meta{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .prog-label{font-size:11px;color:#3a3a3a;letter-spacing:.14em}
+  .prog-pct{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#555}
+  .prog-track{height:2px;background:#1c1c1c;border-radius:2px}
+  .prog-fill{height:100%;background:#e0e0d8;border-radius:2px;transition:width .4s}
+
+  .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .section-name{font-size:11px;letter-spacing:.18em;color:#3a3a3a}
+  .section-count{font-size:11px;color:#2a2a2a;letter-spacing:.06em}
+
+  .goal-row{display:flex;align-items:center;gap:16px;padding:18px 0;border-bottom:.5px solid #181818;cursor:pointer;user-select:none;transition:opacity .15s}
+  .goal-row:active{opacity:.5}
+  .goal-row:last-child{border-bottom:none}
+  .goal-row.done .goal-text{color:#2a2a2a;text-decoration:line-through}
+  .goal-row.done .check-box{background:#e0e0d8;border-color:#e0e0d8}
+  .goal-row.done .check-box i{color:#0c0c0c}
+
+  .check-box{width:28px;height:28px;border:.5px solid #2e2e2e;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+  .check-box i{font-size:16px;color:transparent}
+  .goal-text{font-size:15px;font-weight:300;letter-spacing:.01em;flex:1;line-height:1.5;color:#a8a8a0}
+  .del-btn{background:none;border:none;color:#252525;cursor:pointer;padding:10px;font-size:20px;line-height:1;flex-shrink:0;transition:color .15s}
+  .del-btn:active{color:#888}
+
+  .empty{font-size:12px;color:#222;padding:16px 0;letter-spacing:.08em;font-style:italic}
+
+  .add-row{display:flex;align-items:center;gap:14px;margin-top:14px;padding:16px 0;border-bottom:.5px solid #181818}
+  .add-input{background:none;border:none;padding:0;color:#e0e0d8;font-family:'DM Mono',monospace;font-size:15px;font-weight:300;flex:1;outline:none;letter-spacing:.01em}
+  .add-input::placeholder{color:#2a2a2a}
+  .add-btn{background:none;border:.5px solid #222;border-radius:7px;color:#3a3a3a;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;transition:all .15s}
+  .add-btn:active{border-color:#888;color:#e0e0d8}
+
+  .divider{height:.5px;background:#181818;margin:40px 0}
+
+  .loading{text-align:center;font-size:12px;color:#2a2a2a;letter-spacing:.1em;padding:40px 0}
+
+  .toast{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);background:#181818;border:.5px solid #2a2a2a;border-radius:8px;padding:14px 28px;font-size:12px;color:#888;letter-spacing:.08em;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;z-index:99}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="date" id="top-date"></div>
+    <div class="title">Today</div>
+  </div>
+
+  <div class="prog-wrap">
+    <div class="prog-meta">
+      <span class="prog-label">PROGRESS</span>
+      <span class="prog-pct" id="prog-pct">0%</span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <div id="app-content">
+    <div class="loading">loading...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let goals=[];
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+async function loadGoals(){
+  try{
+    const res=await fetch('/api/goals');
+    goals=await res.json();
+    render();
+  }catch(e){
+    document.getElementById('app-content').innerHTML='<div class="loading">could not connect</div>';
+  }
+}
+
+async function addGoal(type){
+  const inp=document.getElementById(type+'-input');
+  const v=inp.value.trim();
+  if(!v)return;
+  inp.value='';
+  try{
+    const res=await fetch('/api/goals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:v,type})});
+    const goal=await res.json();
+    goals.push(goal);
+    render();
+  }catch{toast('error saving');}
+}
+
+async function toggle(id){
+  const g=goals.find(x=>x.id===id);
+  if(!g)return;
+  g.done=g.done?0:1;
+  render();
+  try{
+    await fetch('/api/goals/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({done:g.done})});
+    if(g.type==='todo'&&g.done){
+      setTimeout(async()=>{
+        await fetch('/api/goals/'+id,{method:'DELETE'});
+        goals=goals.filter(x=>x.id!==id);
+        render();
+      },500);
+    }
+  }catch{toast('error saving');}
+}
+
+async function del(id){
+  goals=goals.filter(x=>x.id!==id);
+  render();
+  try{
+    await fetch('/api/goals/'+id,{method:'DELETE'});
+  }catch{toast('error deleting');}
+}
+
+function render(){
+  const daily=goals.filter(g=>g.type==='daily');
+  const todos=goals.filter(g=>g.type==='todo');
+  const allDone=goals.filter(g=>g.done).length;
+  const pct=goals.length?Math.round(allDone/goals.length*100):0;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').textContent=pct+'%';
+
+  const dc=daily.filter(g=>g.done).length;
+  const tc=todos.filter(g=>g.done).length;
+
+  document.getElementById('app-content').innerHTML=`
+    <div class="section-header">
+      <span class="section-name">DAILY</span>
+      <span class="section-count">${dc}/${daily.length}</span>
+    </div>
+    <div id="daily-list">${renderList(daily,'daily')}</div>
+    <div class="add-row">
+      <input class="add-input" id="daily-input" placeholder="add a daily goal..." />
+      <button class="add-btn" onclick="addGoal('daily')" aria-label="Add daily goal"><i class="ti ti-plus" aria-hidden="true"></i></button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-header">
+      <span class="section-name">TO DO</span>
+      <span class="section-count">${tc}/${todos.length}</span>
+    </div>
+    <div id="todo-list">${renderList(todos,'todo')}</div>
+    <div class="add-row">
+      <input class="add-input" id="todo-input" placeholder="add a one-off task..." />
+      <button class="add-btn" onclick="addGoal('todo')" aria-label="Add to-do"><i class="ti ti-plus" aria-hidden="true"></i></button>
+    </div>
+  `;
+
+  document.getElementById('daily-input').addEventListener('keydown',e=>{if(e.key==='Enter')addGoal('daily');});
+  document.getElementById('todo-input').addEventListener('keydown',e=>{if(e.key==='Enter')addGoal('todo');});
+}
+
+function renderList(list,type){
+  if(!list.length) return '<div class="empty">nothing here yet</div>';
+  return list.map(g=>`
+    <div class="goal-row${g.done?' done':''}" id="goal-${g.id}">
+      <div class="check-box" onclick="toggle(${g.id})"><i class="ti ti-check" aria-hidden="true"></i></div>
+      <span class="goal-text" onclick="toggle(${g.id})">${g.text}</span>
+      <button class="del-btn" onclick="del(${g.id})" aria-label="Delete"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+  `).join('');
+}
+
+const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const now=new Date();
+document.getElementById('top-date').textContent=days[now.getDay()]+' · '+months[now.getMonth()]+' '+now.getDate();
+
+loadGoals();
+</script>
+</body>
+</html>
