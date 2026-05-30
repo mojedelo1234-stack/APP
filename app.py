@@ -6,7 +6,6 @@
 <title>Today</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{min-height:100%;background:#111111;color:#f0f0f0;font-family:'Inter',sans-serif}
@@ -28,23 +27,31 @@
   .goal-row:last-child{border-bottom:none}
   .goal-row.done .goal-text{color:#444;text-decoration:line-through}
   .goal-row.done .check-box{background:#ffffff;border-color:#ffffff}
-  .goal-row.done .check-box i{color:#111}
+  .goal-row.done .check-box svg{opacity:1}
   .check-box{width:26px;height:26px;border:1.5px solid #444;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
-  .check-box i{font-size:15px;color:transparent}
-  .goal-text{font-size:16px;font-weight:400;flex:1;line-height:1.5;color:#e8e8e8}
-  .del-btn{background:none;border:none;color:#444;cursor:pointer;padding:8px;font-size:18px;line-height:1;flex-shrink:0;transition:color .15s}
-  .del-btn:active{color:#fff}
+  .check-box svg{width:14px;height:14px;opacity:0;transition:opacity .15s}
+  .goal-text{font-size:16px;font-weight:400;flex:1;line-height:1.5;color:#e8e8e8;word-break:break-word}
+  .goal-actions{display:flex;gap:4px;opacity:0;transition:opacity .15s}
+  .goal-row:hover .goal-actions{opacity:1}
+  .action-btn{background:none;border:none;color:#444;cursor:pointer;padding:6px;font-size:16px;line-height:1;flex-shrink:0;transition:color .15s;display:flex;align-items:center;justify-content:center}
+  .action-btn:hover{color:#fff}
+  .action-btn.delete:hover{color:#8b5a5a}
   .empty{font-size:13px;color:#444;padding:16px 0;font-style:italic}
   .add-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding:14px 0;border-bottom:1px solid #1e1e1e}
   .add-input{background:none;border:none;padding:0;color:#f0f0f0;font-family:'Inter',sans-serif;font-size:16px;font-weight:300;flex:1;outline:none}
   .add-input::placeholder{color:#444}
   .add-btn{background:#ffffff;border:none;border-radius:8px;color:#111;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;transition:all .15s}
   .add-btn:active{background:#ccc}
+  .add-btn svg{width:18px;height:18px}
   .divider{height:1px;background:#1e1e1e;margin:40px 0}
   .loading{text-align:center;font-size:13px;color:#555;padding:40px 0}
   .toast{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);background:#222;border:1px solid #333;border-radius:8px;padding:12px 24px;font-size:13px;color:#ccc;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;z-index:99}
   .toast.show{opacity:1}
+  .edit-input{background:transparent;border:none;border-bottom:1px solid #555;color:#e8e8e8;font-family:'Inter',sans-serif;font-size:16px;flex:1;outline:none;padding:2px 0}
+  .goal-row.editing .goal-actions{opacity:1}
+  @media(max-width:480px){.goal-actions{opacity:1}}
 </style>
+<base target="_blank">
 </head>
 <body>
 <div class="wrap">
@@ -59,48 +66,187 @@
     </div>
     <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
   </div>
-  <div id="app-content">
-    <div class="loading">loading...</div>
-  </div>
+  <div id="app-content"></div>
 </div>
 <div class="toast" id="toast"></div>
+
 <script>
-let goals=[];
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
-async function loadGoals(){try{const res=await fetch('/api/goals');goals=await res.json();render();}catch(e){document.getElementById('app-content').innerHTML='<div class="loading">could not connect</div>';}}
-async function addGoal(type){const inp=document.getElementById(type+'-input');const v=inp.value.trim();if(!v)return;inp.value='';try{const res=await fetch('/api/goals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:v,type})});const goal=await res.json();goals.push(goal);render();}catch{toast('error saving');}}
-async function toggle(id){const g=goals.find(x=>x.id===id);if(!g)return;g.done=g.done?0:1;render();try{await fetch('/api/goals/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({done:g.done})});if(g.type==='todo'&&g.done){setTimeout(async()=>{await fetch('/api/goals/'+id,{method:'DELETE'});goals=goals.filter(x=>x.id!==id);render();},500);}}catch{toast('error saving');}}
-async function del(id){goals=goals.filter(x=>x.id!==id);render();try{await fetch('/api/goals/'+id,{method:'DELETE'});}catch{toast('error deleting');}}
-function render(){
-  const daily=goals.filter(g=>g.type==='daily');
-  const todos=goals.filter(g=>g.type==='todo');
-  const allDone=goals.filter(g=>g.done).length;
-  const pct=goals.length?Math.round(allDone/goals.length*100):0;
-  document.getElementById('prog-fill').style.width=pct+'%';
-  document.getElementById('prog-pct').textContent=pct+'%';
-  const dc=daily.filter(g=>g.done).length;
-  const tc=todos.filter(g=>g.done).length;
-  document.getElementById('app-content').innerHTML=`
+const STORAGE_KEY = 'today_app_v1';
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return getDefaultData();
+    const data = JSON.parse(raw);
+    const today = new Date().toDateString();
+    if (data.lastDate !== today) {
+      data.daily.forEach(g => g.done = false);
+      data.lastDate = today;
+      saveData(data);
+    }
+    return data;
+  } catch {
+    return getDefaultData();
+  }
+}
+
+function getDefaultData() {
+  return { daily: [], todo: [], lastDate: new Date().toDateString() };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let data = loadData();
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function addGoal(type) {
+  const inp = document.getElementById(type + '-input');
+  const v = inp.value.trim();
+  if (!v) return;
+  inp.value = '';
+  const goal = { id: genId(), text: v, done: false, created: Date.now() };
+  data[type].push(goal);
+  saveData(data);
+  render();
+  inp.focus();
+}
+
+function toggle(id) {
+  const g = data.daily.find(x => x.id === id) || data.todo.find(x => x.id === id);
+  if (!g) return;
+  g.done = !g.done;
+  saveData(data);
+  render();
+  if (g.type === 'todo' && g.done) {
+    setTimeout(() => {
+      data.todo = data.todo.filter(x => x.id !== id);
+      saveData(data);
+      render();
+    }, 400);
+  }
+}
+
+function del(id) {
+  data.daily = data.daily.filter(x => x.id !== id);
+  data.todo = data.todo.filter(x => x.id !== id);
+  saveData(data);
+  render();
+}
+
+function startEdit(id) {
+  const g = data.daily.find(x => x.id === id) || data.todo.find(x => x.id === id);
+  if (!g) return;
+  const row = document.getElementById('goal-' + id);
+  if (row.classList.contains('editing')) return;
+  row.classList.add('editing');
+  const textSpan = row.querySelector('.goal-text');
+  const actions = row.querySelector('.goal-actions');
+  const orig = g.text;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'edit-input';
+  input.value = orig;
+  textSpan.replaceWith(input);
+  actions.style.opacity = '1';
+  input.focus();
+  input.select();
+  function finish(save) {
+    const nv = input.value.trim();
+    if (save && nv && nv !== orig) {
+      g.text = nv;
+      saveData(data);
+    }
+    render();
+  }
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { input.value = orig; input.blur(); }
+  });
+}
+
+function render() {
+  const daily = data.daily;
+  const todos = data.todo;
+  const all = [...daily, ...todos];
+  const done = all.filter(g => g.done).length;
+  const pct = all.length ? Math.round(done / all.length * 100) : 0;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+  const dc = daily.filter(g => g.done).length;
+  const tc = todos.filter(g => g.done).length;
+  document.getElementById('app-content').innerHTML = `
     <div class="section-header"><span class="section-name">DAILY</span><span class="section-count">${dc}/${daily.length}</span></div>
-    <div id="daily-list">${renderList(daily,'daily')}</div>
-    <div class="add-row"><input class="add-input" id="daily-input" placeholder="add a daily goal..." /><button class="add-btn" onclick="addGoal('daily')"><i class="ti ti-plus"></i></button></div>
+    <div id="daily-list">${renderList(daily, 'daily')}</div>
+    <div class="add-row">
+      <input class="add-input" id="daily-input" placeholder="add a daily goal..." autocomplete="off" />
+      <button class="add-btn" onclick="addGoal('daily')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
     <div class="divider"></div>
     <div class="section-header"><span class="section-name">TO DO</span><span class="section-count">${tc}/${todos.length}</span></div>
-    <div id="todo-list">${renderList(todos,'todo')}</div>
-    <div class="add-row"><input class="add-input" id="todo-input" placeholder="add a one-off task..." /><button class="add-btn" onclick="addGoal('todo')"><i class="ti ti-plus"></i></button></div>
+    <div id="todo-list">${renderList(todos, 'todo')}</div>
+    <div class="add-row">
+      <input class="add-input" id="todo-input" placeholder="add a one-off task..." autocomplete="off" />
+      <button class="add-btn" onclick="addGoal('todo')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
   `;
-  document.getElementById('daily-input').addEventListener('keydown',e=>{if(e.key==='Enter')addGoal('daily');});
-  document.getElementById('todo-input').addEventListener('keydown',e=>{if(e.key==='Enter')addGoal('todo');});
+  document.getElementById('daily-input').addEventListener('keydown', e => { if (e.key === 'Enter') addGoal('daily'); });
+  document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key === 'Enter') addGoal('todo'); });
 }
-function renderList(list,type){
-  if(!list.length)return '<div class="empty">nothing here yet</div>';
-  return list.map(g=>`<div class="goal-row${g.done?' done':''}" id="goal-${g.id}"><div class="check-box" onclick="toggle(${g.id})"><i class="ti ti-check"></i></div><span class="goal-text" onclick="toggle(${g.id})">${g.text}</span><button class="del-btn" onclick="del(${g.id})"><i class="ti ti-x"></i></button></div>`).join('');
+
+function renderList(list, type) {
+  if (!list.length) return '<div class="empty">nothing here yet</div>';
+  return list.map(g => {
+    g.type = type;
+    return `<div class="goal-row${g.done ? ' done' : ''}" id="goal-${g.id}">
+      <div class="check-box" onclick="toggle('${g.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <span class="goal-text" onclick="toggle('${g.id}')">${g.text}</span>
+      <div class="goal-actions">
+        <button class="action-btn" onclick="event.stopPropagation();startEdit('${g.id}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="action-btn delete" onclick="event.stopPropagation();del('${g.id}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
 }
-const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const now=new Date();
-document.getElementById('top-date').textContent=days[now.getDay()]+' · '+months[now.getMonth()]+' '+now.getDate();
-loadGoals();
+
+const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const now = new Date();
+document.getElementById('top-date').textContent = days[now.getDay()] + ' · ' + months[now.getMonth()] + ' ' + now.getDate();
+
+render();
+
+setInterval(() => {
+  const today = new Date().toDateString();
+  if (data.lastDate !== today) {
+    data.daily.forEach(g => g.done = false);
+    data.lastDate = today;
+    saveData(data);
+    render();
+    const n = new Date();
+    document.getElementById('top-date').textContent = days[n.getDay()] + ' · ' + months[n.getMonth()] + ' ' + n.getDate();
+  }
+}, 60000);
 </script>
 </body>
 </html>
