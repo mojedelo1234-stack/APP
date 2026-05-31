@@ -1,15 +1,20 @@
 from flask import Flask, request, jsonify, render_template
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import os
 
 app = Flask(__name__)
-DB = os.path.join(os.path.dirname(__file__), 'goals.db')
+
+def get_db():
+    conn = psycopg2.connect(os.environ['DATABASE_URL'], sslmode='require')
+    return conn
 
 def init_db():
-    conn = sqlite3.connect(DB)
-    conn.execute('''
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute('''
         CREATE TABLE IF NOT EXISTS goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             text TEXT NOT NULL,
             type TEXT NOT NULL,
             done INTEGER DEFAULT 0,
@@ -17,14 +22,10 @@ def init_db():
         )
     ''')
     conn.commit()
+    cur.close()
     conn.close()
 
 init_db()
-
-def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 @app.route('/')
 def index():
@@ -33,7 +34,10 @@ def index():
 @app.route('/api/goals', methods=['GET'])
 def get_goals():
     conn = get_db()
-    goals = conn.execute('SELECT * FROM goals ORDER BY created_at ASC').fetchall()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute('SELECT * FROM goals ORDER BY created_at ASC')
+    goals = cur.fetchall()
+    cur.close()
     conn.close()
     return jsonify([dict(g) for g in goals])
 
@@ -41,12 +45,14 @@ def get_goals():
 def add_goal():
     data = request.json
     conn = get_db()
-    cur = conn.execute(
-        'INSERT INTO goals (text, type) VALUES (?, ?)',
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        'INSERT INTO goals (text, type) VALUES (%s, %s) RETURNING *',
         (data['text'], data['type'])
     )
+    goal = cur.fetchone()
     conn.commit()
-    goal = conn.execute('SELECT * FROM goals WHERE id = ?', (cur.lastrowid,)).fetchone()
+    cur.close()
     conn.close()
     return jsonify(dict(goal))
 
@@ -54,25 +60,35 @@ def add_goal():
 def update_goal(goal_id):
     data = request.json
     conn = get_db()
-    conn.execute('UPDATE goals SET done = ? WHERE id = ?', (data['done'], goal_id))
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    if 'done' in data:
+        cur.execute('UPDATE goals SET done = %s WHERE id = %s', (data['done'], goal_id))
+    if 'text' in data:
+        cur.execute('UPDATE goals SET text = %s WHERE id = %s', (data['text'], goal_id))
     conn.commit()
-    goal = conn.execute('SELECT * FROM goals WHERE id = ?', (goal_id,)).fetchone()
+    cur.execute('SELECT * FROM goals WHERE id = %s', (goal_id,))
+    goal = cur.fetchone()
+    cur.close()
     conn.close()
     return jsonify(dict(goal))
 
 @app.route('/api/goals/<int:goal_id>', methods=['DELETE'])
 def delete_goal(goal_id):
     conn = get_db()
-    conn.execute('DELETE FROM goals WHERE id = ?', (goal_id,))
+    cur = conn.cursor()
+    cur.execute('DELETE FROM goals WHERE id = %s', (goal_id,))
     conn.commit()
+    cur.close()
     conn.close()
     return jsonify({'ok': True})
 
 @app.route('/api/goals/reset-daily', methods=['POST'])
 def reset_daily():
     conn = get_db()
-    conn.execute("UPDATE goals SET done = 0 WHERE type = 'daily'")
+    cur = conn.cursor()
+    cur.execute("UPDATE goals SET done = 0 WHERE type = 'daily'")
     conn.commit()
+    cur.close()
     conn.close()
     return jsonify({'ok': True})
 
