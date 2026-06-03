@@ -10,8 +10,6 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # ─── Connection pool ─────────────────────────────────────────────────────────
-# Opens 2–10 persistent connections instead of 1 per request.
-# Prevents hitting Railway Postgres's connection limit under normal usage.
 
 connection_pool = pg_pool.ThreadedConnectionPool(
     minconn=2,
@@ -22,12 +20,10 @@ connection_pool = pg_pool.ThreadedConnectionPool(
 
 
 def get_db():
-    """Borrow a connection from the pool."""
     return connection_pool.getconn()
 
 
 def release_db(conn):
-    """Return a connection to the pool."""
     connection_pool.putconn(conn)
 
 
@@ -47,12 +43,25 @@ def init_db():
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        # Add order column if upgrading from old schema that didn't have it
         cur.execute('''
             ALTER TABLE goals ADD COLUMN IF NOT EXISTS "order" INTEGER NOT NULL DEFAULT 0
         ''')
         cur.execute('''
             CREATE TABLE IF NOT EXISTS dreams (
+                id         SERIAL PRIMARY KEY,
+                entry      TEXT    NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS gratitude (
+                id         SERIAL PRIMARY KEY,
+                entry      TEXT    NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS daily_notes (
                 id         SERIAL PRIMARY KEY,
                 entry      TEXT    NOT NULL,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -116,7 +125,6 @@ def add_goal():
     conn = get_db()
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        # Set order to max existing order + 1 for this type so new items go to bottom
         cur.execute(
             'SELECT COALESCE(MAX("order"), 0) + 1 AS next_order FROM goals WHERE type = %s',
             (type_,)
@@ -271,6 +279,132 @@ def delete_dream(dream_id):
     except Exception as e:
         conn.rollback()
         logger.error('delete_dream: %s', e)
+        return jsonify({'error': 'server error'}), 500
+    finally:
+        release_db(conn)
+
+
+# ─── Routes: gratitude ───────────────────────────────────────────────────────
+
+@app.route('/api/gratitude', methods=['GET'])
+def get_gratitude():
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT * FROM gratitude ORDER BY created_at DESC')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        return jsonify(rows)
+    except Exception as e:
+        logger.error('get_gratitude: %s', e)
+        return jsonify({'error': 'server error'}), 500
+    finally:
+        release_db(conn)
+
+
+@app.route('/api/gratitude', methods=['POST'])
+def add_gratitude():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'error': 'invalid JSON'}), 400
+
+    entry = (data.get('entry') or '').strip()
+    if not entry:
+        return jsonify({'error': 'entry is required'}), 400
+    if len(entry) > 2000:
+        return jsonify({'error': 'entry too long'}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('INSERT INTO gratitude (entry) VALUES (%s) RETURNING *', (entry,))
+        row = dict(cur.fetchone())
+        conn.commit()
+        cur.close()
+        return jsonify(row), 201
+    except Exception as e:
+        conn.rollback()
+        logger.error('add_gratitude: %s', e)
+        return jsonify({'error': 'server error'}), 500
+    finally:
+        release_db(conn)
+
+
+@app.route('/api/gratitude/<int:entry_id>', methods=['DELETE'])
+def delete_gratitude(entry_id):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute('DELETE FROM gratitude WHERE id = %s', (entry_id,))
+        conn.commit()
+        cur.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        logger.error('delete_gratitude: %s', e)
+        return jsonify({'error': 'server error'}), 500
+    finally:
+        release_db(conn)
+
+
+# ─── Routes: daily notes ─────────────────────────────────────────────────────
+
+@app.route('/api/notes', methods=['GET'])
+def get_notes():
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('SELECT * FROM daily_notes ORDER BY created_at DESC')
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        return jsonify(rows)
+    except Exception as e:
+        logger.error('get_notes: %s', e)
+        return jsonify({'error': 'server error'}), 500
+    finally:
+        release_db(conn)
+
+
+@app.route('/api/notes', methods=['POST'])
+def add_note():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'error': 'invalid JSON'}), 400
+
+    entry = (data.get('entry') or '').strip()
+    if not entry:
+        return jsonify({'error': 'entry is required'}), 400
+    if len(entry) > 10000:
+        return jsonify({'error': 'entry too long'}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute('INSERT INTO daily_notes (entry) VALUES (%s) RETURNING *', (entry,))
+        row = dict(cur.fetchone())
+        conn.commit()
+        cur.close()
+        return jsonify(row), 201
+    except Exception as e:
+        conn.rollback()
+        logger.error('add_note: %s', e)
+        return jsonify({'error': 'server error'}), 500
+    finally:
+        release_db(conn)
+
+
+@app.route('/api/notes/<int:note_id>', methods=['DELETE'])
+def delete_note(note_id):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute('DELETE FROM daily_notes WHERE id = %s', (note_id,))
+        conn.commit()
+        cur.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        conn.rollback()
+        logger.error('delete_note: %s', e)
         return jsonify({'error': 'server error'}), 500
     finally:
         release_db(conn)
