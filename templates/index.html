@@ -58,21 +58,29 @@
   .edit-input{background:transparent;border:none;border-bottom:1px solid #555;color:#e8e8e8;font-family:'Inter',sans-serif;font-size:16px;flex:1;outline:none;padding:2px 0}
   .goal-row.editing .goal-actions{opacity:1}
   @media(max-width:480px){.goal-actions{opacity:1}}
-  /* Dream journal */
-  .dream-textarea{width:100%;background:none;border:none;border-bottom:1px solid #2a2a2a;padding:14px 0;color:#f0f0f0;font-family:'Inter',sans-serif;font-size:15px;font-weight:300;line-height:1.7;resize:none;outline:none;min-height:90px;overflow:hidden;transition:border-color .2s;display:block}
-  .dream-textarea::placeholder{color:#444}
-  .dream-textarea:focus{border-color:#555}
-  .dream-save-row{display:flex;justify-content:flex-end;margin-top:12px;margin-bottom:8px}
-  .dream-save-btn{background:none;border:1px solid #333;border-radius:6px;color:#888;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;padding:8px 16px;transition:all .15s}
-  .dream-save-btn:hover{border-color:#888;color:#fff}
-  .dream-save-btn:disabled{color:#333;border-color:#222;cursor:default}
-  .dream-entry{padding:16px 0;border-bottom:1px solid #1a1a1a}
-  .dream-entry:last-child{border-bottom:none}
-  .dream-entry-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .dream-entry-date{font-size:11px;color:#555;letter-spacing:.05em}
-  .dream-del{background:none;border:none;color:#333;cursor:pointer;padding:2px;transition:color .15s;display:flex}
-  .dream-del:hover{color:#8b5a5a}
-  .dream-entry-text{font-size:14px;font-weight:300;line-height:1.7;color:#999;white-space:pre-wrap;word-break:break-word}
+
+  /* Shared journal styles */
+  .journal-textarea{width:100%;background:none;border:none;border-bottom:1px solid #2a2a2a;padding:14px 0;color:#f0f0f0;font-family:'Inter',sans-serif;font-size:15px;font-weight:300;line-height:1.7;resize:none;outline:none;min-height:90px;overflow:hidden;transition:border-color .2s;display:block}
+  .journal-textarea::placeholder{color:#444}
+  .journal-textarea:focus{border-color:#555}
+  .journal-save-row{display:flex;justify-content:flex-end;margin-top:12px;margin-bottom:8px}
+  .journal-save-btn{background:none;border:1px solid #333;border-radius:6px;color:#888;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;padding:8px 16px;transition:all .15s}
+  .journal-save-btn:hover{border-color:#888;color:#fff}
+  .journal-save-btn:disabled{color:#333;border-color:#222;cursor:default}
+  .journal-entry{padding:16px 0;border-bottom:1px solid #1a1a1a}
+  .journal-entry:last-child{border-bottom:none}
+  .journal-entry-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .journal-entry-date{font-size:11px;color:#555;letter-spacing:.05em}
+  .journal-del{background:none;border:none;color:#333;cursor:pointer;padding:2px;transition:color .15s;display:flex}
+  .journal-del:hover{color:#8b5a5a}
+  .journal-entry-text{font-size:14px;font-weight:300;line-height:1.7;color:#999;white-space:pre-wrap;word-break:break-word}
+
+  /* Gratitude inputs */
+  .gratitude-inputs{display:flex;flex-direction:column;gap:0}
+  .gratitude-input-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #1e1e1e}
+  .gratitude-num{font-size:11px;color:#444;width:16px;flex-shrink:0;text-align:right;letter-spacing:.05em}
+  .gratitude-input{background:none;border:none;padding:0;color:#f0f0f0;font-family:'Inter',sans-serif;font-size:15px;font-weight:300;flex:1;outline:none}
+  .gratitude-input::placeholder{color:#333}
 </style>
 </head>
 <body>
@@ -88,7 +96,9 @@
     </div>
     <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
   </div>
+
   <div id="app-content">
+    <!-- DAILY -->
     <div class="section-header"><span class="section-name">DAILY</span><span class="section-count" id="daily-count">–</span></div>
     <div id="daily-list"><div class="skeleton"></div><div class="skeleton short"></div><div class="skeleton"></div></div>
     <div class="add-row">
@@ -97,7 +107,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
+
     <div class="divider"></div>
+
+    <!-- TO DO -->
     <div class="section-header"><span class="section-name">TO DO</span><span class="section-count" id="todo-count">–</span></div>
     <div id="todo-list"><div class="skeleton"></div><div class="skeleton short"></div></div>
     <div class="add-row">
@@ -108,15 +121,52 @@
     </div>
   </div>
 
-  <!-- Dream Journal -->
+  <!-- GRATITUDE -->
+  <div class="divider"></div>
+  <div class="section-header">
+    <span class="section-name">GRATITUDE</span>
+    <span class="section-count" id="gratitude-count"></span>
+  </div>
+  <div class="gratitude-inputs">
+    <div class="gratitude-input-row">
+      <span class="gratitude-num">1</span>
+      <input class="gratitude-input" id="grat-1" placeholder="i'm grateful for..." autocomplete="off">
+    </div>
+    <div class="gratitude-input-row">
+      <span class="gratitude-num">2</span>
+      <input class="gratitude-input" id="grat-2" placeholder="i'm grateful for..." autocomplete="off">
+    </div>
+    <div class="gratitude-input-row">
+      <span class="gratitude-num">3</span>
+      <input class="gratitude-input" id="grat-3" placeholder="i'm grateful for..." autocomplete="off">
+    </div>
+  </div>
+  <div class="journal-save-row">
+    <button class="journal-save-btn" id="grat-save-btn" onclick="saveGratitude()">SAVE</button>
+  </div>
+  <div id="gratitude-list"></div>
+
+  <!-- DAILY NOTE -->
+  <div class="divider"></div>
+  <div class="section-header">
+    <span class="section-name">DAILY NOTE</span>
+    <span class="section-count" id="notes-count"></span>
+  </div>
+  <textarea class="journal-textarea" id="note-input" placeholder="what's on your mind today..." rows="3"></textarea>
+  <div class="journal-save-row">
+    <button class="journal-save-btn" id="note-save-btn" onclick="saveNote()">SAVE</button>
+  </div>
+  <div id="notes-list"></div>
+
+  <!-- DREAM JOURNAL -->
   <div class="divider"></div>
   <div class="section-header">
     <span class="section-name">DREAM JOURNAL</span>
     <span class="section-count" id="dream-count"></span>
   </div>
-  <textarea class="dream-textarea" id="dream-input" placeholder="what did you dream about..." rows="3"></textarea>
-  <div class="dream-save-row">
-    <button class="dream-save-btn" id="dream-save-btn" onclick="saveDream()">SAVE</button>
+  <textarea class="journal-textarea" id="dream-input" placeholder="what did you dream about..." rows="3"></textarea>
+  <div class="journal-save-row">
+    <button class="journal-save-btn" id="dream-save-btn" onclick="saveDream()">SAVE</button>
   </div>
   <div id="dreams-list"></div>
 </div>
@@ -127,11 +177,8 @@
 
 function esc(str) {
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -139,6 +186,13 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 
 function formatDate(d) {
   return DAYS[d.getDay()] + ' · ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+}
+
+function entryDateLabel(ts) {
+  const dt = new Date(ts);
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+       + ' · '
+       + dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
 function updateHeaderDate() {
@@ -155,30 +209,21 @@ function toast(msg, undoFn) {
   const t     = document.getElementById('toast');
   const msgEl = document.getElementById('toast-msg');
   msgEl.textContent = msg;
-
-  // Remove any old undo button
   const old = t.querySelector('.toast-undo');
   if (old) old.remove();
-
   if (undoFn) {
     const btn = document.createElement('button');
     btn.className   = 'toast-undo';
     btn.textContent = 'UNDO';
-    btn.onclick = () => {
-      undoFn();
-      t.classList.remove('show');
-    };
+    btn.onclick = () => { undoFn(); t.classList.remove('show'); };
     t.appendChild(btn);
   }
-
   t.classList.add('show');
   toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
-// goals: array of { id, text, type, done, order }
-// Loaded from API, never from localStorage
 let goals = [];
 let goalsLoaded = false;
 
@@ -209,7 +254,6 @@ async function maybeDailyReset() {
   }
 }
 
-// Poll for midnight rollover every 60s
 setInterval(async () => {
   const today     = new Date().toDateString();
   const lastReset = localStorage.getItem(LAST_RESET_KEY);
@@ -225,7 +269,6 @@ setInterval(async () => {
 async function loadGoals() {
   try {
     const raw = await api('/api/goals');
-    // Normalise: backend returns {id, text, type, done(int), order}
     goals = raw.map(g => ({
       id:    g.id,
       text:  g.text,
@@ -246,21 +289,16 @@ async function loadGoals() {
 
 function render() {
   if (!goalsLoaded) return;
-
   const daily = goals.filter(g => g.type === 'daily');
   const todos  = goals.filter(g => g.type === 'todo');
-  const all    = goals;
-  const done   = all.filter(g => g.done).length;
-  const pct    = all.length ? Math.round(done / all.length * 100) : 0;
+  const done   = goals.filter(g => g.done).length;
+  const pct    = goals.length ? Math.round(done / goals.length * 100) : 0;
 
   document.getElementById('prog-fill').style.width = pct + '%';
   document.getElementById('prog-pct').textContent  = pct + '%';
 
-  const dc = daily.filter(g => g.done).length;
-  const tc = todos.filter(g => g.done).length;
-
-  document.getElementById('daily-count').textContent = daily.length ? `${dc}/${daily.length}` : '';
-  document.getElementById('todo-count').textContent  = todos.length ? `${tc}/${todos.length}` : '';
+  document.getElementById('daily-count').textContent = daily.length ? `${daily.filter(g=>g.done).length}/${daily.length}` : '';
+  document.getElementById('todo-count').textContent  = todos.length ? `${todos.filter(g=>g.done).length}/${todos.length}` : '';
 
   renderList(daily, 'daily-list');
   renderList(todos, 'todo-list');
@@ -268,23 +306,13 @@ function render() {
 
 function renderList(list, containerId) {
   const el = document.getElementById(containerId);
-  if (!list.length) {
-    el.innerHTML = '<div class="empty">nothing here yet</div>';
-    return;
-  }
-
-  const allDone = list.every(g => g.done);
-  if (allDone) {
-    el.innerHTML = '<div class="all-done">✓ all done</div>';
-    return;
-  }
+  if (!list.length) { el.innerHTML = '<div class="empty">nothing here yet</div>'; return; }
+  if (list.every(g => g.done)) { el.innerHTML = '<div class="all-done">✓ all done</div>'; return; }
 
   el.innerHTML = list.map(g => `
     <div class="goal-row${g.done ? ' done' : ''}" id="goal-${g.id}" data-id="${g.id}">
       <div class="check-box" onclick="toggleGoal(${g.id})">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="3">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <span class="goal-text" onclick="toggleGoal(${g.id})">${esc(g.text)}</span>
       <div class="goal-actions">
@@ -311,62 +339,40 @@ async function addGoal(type) {
   const btn = document.getElementById(type + '-add-btn');
   const v   = inp.value.trim();
   if (!v) return;
-
-  inp.value   = '';
-  inp.disabled = true;
-  btn.disabled = true;
-
+  inp.value = ''; inp.disabled = true; btn.disabled = true;
   try {
-    const g = await api('/api/goals', {
-      method: 'POST',
-      body: JSON.stringify({ text: v, type }),
-    });
+    const g = await api('/api/goals', { method: 'POST', body: JSON.stringify({ text: v, type }) });
     goals.push({ id: g.id, text: g.text, type: g.type, done: !!g.done, order: g.id });
     render();
   } catch (e) {
     console.error('addGoal failed:', e);
-    inp.value = v; // restore text
+    inp.value = v;
     toast('couldn\'t save — try again');
   } finally {
-    inp.disabled  = false;
-    btn.disabled  = false;
-    inp.focus();
+    inp.disabled = false; btn.disabled = false; inp.focus();
   }
 }
 
 // ─── Toggle ──────────────────────────────────────────────────────────────────
 
-// Track in-flight toggles to prevent race conditions
 const pendingToggles = new Set();
 
 async function toggleGoal(id) {
   if (pendingToggles.has(id)) return;
   pendingToggles.add(id);
-
   const g = goals.find(x => x.id === id);
   if (!g) { pendingToggles.delete(id); return; }
-
   const newDone = !g.done;
   g.done = newDone;
   render();
-
   try {
-    await api(`/api/goals/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ done: newDone ? 1 : 0 }),
-    });
-
-    // Auto-remove completed todos after animation
+    await api(`/api/goals/${id}`, { method: 'PATCH', body: JSON.stringify({ done: newDone ? 1 : 0 }) });
     if (g.type === 'todo' && newDone) {
-      setTimeout(() => {
-        goals = goals.filter(x => x.id !== id);
-        render();
-      }, 700);
+      setTimeout(() => { goals = goals.filter(x => x.id !== id); render(); }, 700);
     }
   } catch (e) {
     console.error('toggleGoal failed:', e);
-    g.done = !newDone; // revert
-    render();
+    g.done = !newDone; render();
     toast('couldn\'t update — try again');
   } finally {
     pendingToggles.delete(id);
@@ -378,32 +384,16 @@ async function toggleGoal(id) {
 async function deleteGoal(id) {
   const g = goals.find(x => x.id === id);
   if (!g) return;
-
-  // Optimistic remove
   goals = goals.filter(x => x.id !== id);
   render();
-
   toast(`deleted "${g.text.length > 24 ? g.text.slice(0, 24) + '…' : g.text}"`, async () => {
-    // Undo: re-add to backend
     try {
-      const restored = await api('/api/goals', {
-        method: 'POST',
-        body: JSON.stringify({ text: g.text, type: g.type }),
-      });
+      const restored = await api('/api/goals', { method: 'POST', body: JSON.stringify({ text: g.text, type: g.type }) });
       goals.push({ id: restored.id, text: restored.text, type: restored.type, done: false, order: restored.id });
       render();
-    } catch (e) {
-      console.error('Undo failed:', e);
-      toast('undo failed');
-    }
+    } catch (e) { toast('undo failed'); }
   });
-
-  try {
-    await api(`/api/goals/${id}`, { method: 'DELETE' });
-  } catch (e) {
-    console.error('deleteGoal failed:', e);
-    // Already removed from UI — silently log; undo still works via re-POST
-  }
+  try { await api(`/api/goals/${id}`, { method: 'DELETE' }); } catch (e) { console.error(e); }
 }
 
 // ─── Edit goal ───────────────────────────────────────────────────────────────
@@ -411,66 +401,174 @@ async function deleteGoal(id) {
 function startEdit(id) {
   const g = goals.find(x => x.id === id);
   if (!g) return;
-
   const row = document.getElementById('goal-' + id);
   if (!row || row.classList.contains('editing')) return;
   row.classList.add('editing');
-
   const textSpan = row.querySelector('.goal-text');
-  const orig     = g.text;
-
-  const input    = document.createElement('input');
-  input.type      = 'text';
-  input.className = 'edit-input';
-  input.value     = orig;
+  const orig = g.text;
+  const input = document.createElement('input');
+  input.type = 'text'; input.className = 'edit-input'; input.value = orig;
   textSpan.replaceWith(input);
-  input.focus();
-  input.select();
+  input.focus(); input.select();
 
   async function finish(save) {
     const nv = input.value.trim();
     if (save && nv && nv !== orig) {
-      g.text = nv;
-      render(); // optimistic
+      g.text = nv; render();
       try {
-        await api(`/api/goals/${id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ text: nv }),
-        });
-      } catch (e) {
-        console.error('Edit save failed:', e);
-        g.text = orig; // revert
-        render();
-        toast('couldn\'t save edit');
-      }
-    } else {
-      render();
-    }
+        await api(`/api/goals/${id}`, { method: 'PATCH', body: JSON.stringify({ text: nv }) });
+      } catch (e) { g.text = orig; render(); toast('couldn\'t save edit'); }
+    } else { render(); }
   }
 
-  // Prevent duplicate finish calls (blur fires after keydown)
   let finished = false;
-  function once(save) {
-    if (finished) return;
-    finished = true;
-    finish(save);
-  }
-
-  input.addEventListener('blur',    () => once(true));
+  function once(save) { if (finished) return; finished = true; finish(save); }
+  input.addEventListener('blur', () => once(true));
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  { e.preventDefault(); once(true); }
+    if (e.key === 'Enter') { e.preventDefault(); once(true); }
     if (e.key === 'Escape') { input.value = orig; once(false); }
   });
 }
 
 // ─── Input enter key ─────────────────────────────────────────────────────────
 
-document.getElementById('daily-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addGoal('daily');
-});
-document.getElementById('todo-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') addGoal('todo');
-});
+document.getElementById('daily-input').addEventListener('keydown', e => { if (e.key === 'Enter') addGoal('daily'); });
+document.getElementById('todo-input').addEventListener('keydown',  e => { if (e.key === 'Enter') addGoal('todo'); });
+
+// ─── Gratitude ───────────────────────────────────────────────────────────────
+
+async function loadGratitude() {
+  try {
+    const rows = await api('/api/gratitude');
+    const countEl = document.getElementById('gratitude-count');
+    const listEl  = document.getElementById('gratitude-list');
+    countEl.textContent = rows.length || '';
+    if (!rows.length) { listEl.innerHTML = '<div class="empty">no entries yet</div>'; return; }
+    listEl.innerHTML = rows.map(r => `
+      <div class="journal-entry" id="grat-entry-${r.id}">
+        <div class="journal-entry-meta">
+          <span class="journal-entry-date">${esc(entryDateLabel(r.created_at))}</span>
+          <button class="journal-del" onclick="deleteGratitude(${r.id})">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="journal-entry-text">${esc(r.entry)}</div>
+      </div>`).join('');
+  } catch (e) {
+    console.error('loadGratitude failed:', e);
+    document.getElementById('gratitude-list').innerHTML = '<div class="empty">couldn\'t load</div>';
+  }
+}
+
+async function saveGratitude() {
+  const inputs = [
+    document.getElementById('grat-1').value.trim(),
+    document.getElementById('grat-2').value.trim(),
+    document.getElementById('grat-3').value.trim(),
+  ].filter(Boolean);
+
+  if (!inputs.length) return;
+
+  const btn = document.getElementById('grat-save-btn');
+  btn.disabled = true;
+
+  const entry = inputs.map((v, i) => `${i + 1}. ${v}`).join('\n');
+
+  try {
+    await api('/api/gratitude', { method: 'POST', body: JSON.stringify({ entry }) });
+    document.getElementById('grat-1').value = '';
+    document.getElementById('grat-2').value = '';
+    document.getElementById('grat-3').value = '';
+    toast('gratitude saved');
+    loadGratitude();
+  } catch (e) {
+    console.error('saveGratitude failed:', e);
+    toast('couldn\'t save — try again');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteGratitude(id) {
+  const entry = document.getElementById('grat-entry-' + id);
+  const text  = entry ? entry.querySelector('.journal-entry-text').textContent : '';
+  if (entry) entry.remove();
+  const remaining = document.querySelectorAll('#gratitude-list .journal-entry').length;
+  document.getElementById('gratitude-count').textContent = remaining || '';
+  if (!remaining) document.getElementById('gratitude-list').innerHTML = '<div class="empty">no entries yet</div>';
+  toast('deleted', async () => {
+    try { await api('/api/gratitude', { method: 'POST', body: JSON.stringify({ entry: text }) }); loadGratitude(); }
+    catch (e) { toast('undo failed'); }
+  });
+  try { await api('/api/gratitude/' + id, { method: 'DELETE' }); } catch (e) { console.error(e); }
+}
+
+// ─── Daily Note ──────────────────────────────────────────────────────────────
+
+async function loadNotes() {
+  try {
+    const rows = await api('/api/notes');
+    const countEl = document.getElementById('notes-count');
+    const listEl  = document.getElementById('notes-list');
+    countEl.textContent = rows.length || '';
+    if (!rows.length) { listEl.innerHTML = '<div class="empty">no entries yet</div>'; return; }
+    listEl.innerHTML = rows.map(r => `
+      <div class="journal-entry" id="note-entry-${r.id}">
+        <div class="journal-entry-meta">
+          <span class="journal-entry-date">${esc(entryDateLabel(r.created_at))}</span>
+          <button class="journal-del" onclick="deleteNote(${r.id})">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="journal-entry-text">${esc(r.entry)}</div>
+      </div>`).join('');
+  } catch (e) {
+    console.error('loadNotes failed:', e);
+    document.getElementById('notes-list').innerHTML = '<div class="empty">couldn\'t load</div>';
+  }
+}
+
+async function saveNote() {
+  const inp = document.getElementById('note-input');
+  const btn = document.getElementById('note-save-btn');
+  const v   = inp.value.trim();
+  if (!v) return;
+  btn.disabled = true;
+  const saved = v;
+  try {
+    await api('/api/notes', { method: 'POST', body: JSON.stringify({ entry: v }) });
+    inp.value = '';
+    autoGrow(inp);
+    toast('note saved');
+    loadNotes();
+  } catch (e) {
+    console.error('saveNote failed:', e);
+    inp.value = saved;
+    toast('couldn\'t save — try again');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteNote(id) {
+  const entry = document.getElementById('note-entry-' + id);
+  const text  = entry ? entry.querySelector('.journal-entry-text').textContent : '';
+  if (entry) entry.remove();
+  const remaining = document.querySelectorAll('#notes-list .journal-entry').length;
+  document.getElementById('notes-count').textContent = remaining || '';
+  if (!remaining) document.getElementById('notes-list').innerHTML = '<div class="empty">no entries yet</div>';
+  toast('deleted', async () => {
+    try { await api('/api/notes', { method: 'POST', body: JSON.stringify({ entry: text }) }); loadNotes(); }
+    catch (e) { toast('undo failed'); }
+  });
+  try { await api('/api/notes/' + id, { method: 'DELETE' }); } catch (e) { console.error(e); }
+}
 
 // ─── Dream journal ───────────────────────────────────────────────────────────
 
@@ -479,32 +577,21 @@ async function loadDreams() {
     const dreams = await api('/api/dreams');
     const countEl = document.getElementById('dream-count');
     const listEl  = document.getElementById('dreams-list');
-
     countEl.textContent = dreams.length || '';
-
-    if (!dreams.length) {
-      listEl.innerHTML = '<div class="empty">no entries yet</div>';
-      return;
-    }
-
-    listEl.innerHTML = dreams.map(d => {
-      const dt    = new Date(d.created_at);
-      const label = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                  + ' · '
-                  + dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      return `<div class="dream-entry" id="dream-${d.id}">
-        <div class="dream-entry-meta">
-          <span class="dream-entry-date">${esc(label)}</span>
-          <button class="dream-del" aria-label="Delete dream" onclick="deleteDream(${d.id})">
+    if (!dreams.length) { listEl.innerHTML = '<div class="empty">no entries yet</div>'; return; }
+    listEl.innerHTML = dreams.map(d => `
+      <div class="journal-entry" id="dream-${d.id}">
+        <div class="journal-entry-meta">
+          <span class="journal-entry-date">${esc(entryDateLabel(d.created_at))}</span>
+          <button class="journal-del" aria-label="Delete dream" onclick="deleteDream(${d.id})">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
             </svg>
           </button>
         </div>
-        <div class="dream-entry-text">${esc(d.entry)}</div>
-      </div>`;
-    }).join('');
+        <div class="journal-entry-text">${esc(d.entry)}</div>
+      </div>`).join('');
   } catch (e) {
     console.error('loadDreams failed:', e);
     document.getElementById('dreams-list').innerHTML = '<div class="empty">couldn\'t load dreams</div>';
@@ -516,15 +603,10 @@ async function saveDream() {
   const btn = document.getElementById('dream-save-btn');
   const v   = inp.value.trim();
   if (!v) return;
-
   btn.disabled = true;
   const savedText = v;
-
   try {
-    const res = await api('/api/dreams', {
-      method: 'POST',
-      body: JSON.stringify({ entry: v }),
-    });
+    const res = await api('/api/dreams', { method: 'POST', body: JSON.stringify({ entry: v }) });
     if (!res || !res.id) throw new Error('bad response');
     inp.value = '';
     autoGrow(inp);
@@ -532,7 +614,7 @@ async function saveDream() {
     loadDreams();
   } catch (e) {
     console.error('saveDream failed:', e);
-    inp.value = savedText; // restore on failure
+    inp.value = savedText;
     toast('couldn\'t save dream — try again');
   } finally {
     btn.disabled = false;
@@ -540,40 +622,18 @@ async function saveDream() {
 }
 
 async function deleteDream(id) {
-  const entry   = document.getElementById('dream-' + id);
-  const textEl  = entry ? entry.querySelector('.dream-entry-text') : null;
-  const text    = textEl ? textEl.textContent : '';
-
-  // Optimistic remove
+  const entry  = document.getElementById('dream-' + id);
+  const textEl = entry ? entry.querySelector('.journal-entry-text') : null;
+  const text   = textEl ? textEl.textContent : '';
   if (entry) entry.remove();
-
-  // Update count
-  const remaining = document.querySelectorAll('.dream-entry').length;
+  const remaining = document.querySelectorAll('#dreams-list .journal-entry').length;
   document.getElementById('dream-count').textContent = remaining || '';
-  if (!remaining) {
-    document.getElementById('dreams-list').innerHTML = '<div class="empty">no entries yet</div>';
-  }
-
-  toast(`deleted dream`, async () => {
-    // Undo: re-save the entry
-    try {
-      await api('/api/dreams', {
-        method: 'POST',
-        body: JSON.stringify({ entry: text }),
-      });
-      loadDreams();
-    } catch (e) {
-      console.error('Undo dream failed:', e);
-      toast('undo failed');
-    }
+  if (!remaining) document.getElementById('dreams-list').innerHTML = '<div class="empty">no entries yet</div>';
+  toast('deleted dream', async () => {
+    try { await api('/api/dreams', { method: 'POST', body: JSON.stringify({ entry: text }) }); loadDreams(); }
+    catch (e) { toast('undo failed'); }
   });
-
-  try {
-    await api('/api/dreams/' + id, { method: 'DELETE' });
-  } catch (e) {
-    console.error('deleteDream API failed:', e);
-    // Optimistic removal already done; silently log
-  }
+  try { await api('/api/dreams/' + id, { method: 'DELETE' }); } catch (e) { console.error(e); }
 }
 
 // ─── Auto-grow textarea ──────────────────────────────────────────────────────
@@ -583,12 +643,25 @@ function autoGrow(el) {
   el.style.height = el.scrollHeight + 'px';
 }
 
-const dreamTextarea = document.getElementById('dream-input');
-dreamTextarea.addEventListener('input', () => autoGrow(dreamTextarea));
+['dream-input', 'note-input'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => autoGrow(el));
+});
 
-// Cmd/Ctrl+Enter to save dream
-dreamTextarea.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveDream();
+dreamTextarea = document.getElementById('dream-input');
+dreamTextarea.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveDream(); });
+
+noteTextarea = document.getElementById('note-input');
+noteTextarea.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveNote(); });
+
+// Tab through gratitude inputs
+['grat-1','grat-2'].forEach((id, i) => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById(`grat-${i+2}`).focus(); }
+  });
+});
+document.getElementById('grat-3').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); saveGratitude(); }
 });
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
@@ -597,6 +670,8 @@ dreamTextarea.addEventListener('keydown', e => {
   await maybeDailyReset();
   await loadGoals();
   await loadDreams();
+  await loadGratitude();
+  await loadNotes();
 })();
 </script>
 </body>
