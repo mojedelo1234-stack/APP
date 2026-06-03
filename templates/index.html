@@ -58,6 +58,13 @@
   .edit-input{background:transparent;border:none;border-bottom:1px solid #555;color:#e8e8e8;font-family:'Inter',sans-serif;font-size:16px;flex:1;outline:none;padding:2px 0}
   .goal-row.editing .goal-actions{opacity:1}
   @media(max-width:480px){.goal-actions{opacity:1}}
+  .drag-handle{width:20px;height:32px;display:flex;align-items:center;justify-content:center;cursor:grab;flex-shrink:0;opacity:0;transition:opacity .15s}
+  .drag-handle:active{cursor:grabbing}
+  .drag-handle svg{width:14px;height:14px;color:#444}
+  .goal-row:hover .drag-handle{opacity:1}
+  @media(max-width:480px){.drag-handle{opacity:1}}
+  .goal-row.dragging{opacity:.3;background:#1a1a1a}
+  .goal-row.drag-over{border-top:2px solid #555}
 
   /* Shared journal styles */
   .journal-textarea{width:100%;background:none;border:none;border-bottom:1px solid #2a2a2a;padding:14px 0;color:#f0f0f0;font-family:'Inter',sans-serif;font-size:15px;font-weight:300;line-height:1.7;resize:none;outline:none;min-height:90px;overflow:hidden;transition:border-color .2s;display:block}
@@ -327,6 +334,9 @@ function renderList(list, containerId) {
 
   el.innerHTML = list.map(g => `
     <div class="goal-row${g.done ? ' done' : ''}" id="goal-${g.id}" data-id="${g.id}">
+      <div class="drag-handle" draggable="false" onmousedown="startDrag(event,${g.id})" ontouchstart="startDrag(event,${g.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
+      </div>
       <div class="check-box" onclick="toggleGoal(${g.id})">
         <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
@@ -674,6 +684,94 @@ noteTextarea.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.meta
 document.getElementById('grat-3').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); saveGratitude(); }
 });
+
+// ─── Drag to reorder ─────────────────────────────────────────────────────────
+
+let dragId = null;
+let dragType = null;
+let dragStartY = 0;
+let dragEl = null;
+
+function startDrag(e, id) {
+  const g = goals.find(x => x.id === id);
+  if (!g) return;
+  dragId   = id;
+  dragType = g.type;
+  dragEl   = document.getElementById('goal-' + id);
+  dragStartY = (e.touches ? e.touches[0].clientY : e.clientY);
+  dragEl.classList.add('dragging');
+
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup',   onDragEnd);
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend',  onDragEnd);
+  e.preventDefault();
+}
+
+function onDragMove(e) {
+  if (!dragEl) return;
+  e.preventDefault();
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const listId  = dragType + '-list';
+  const rows    = [...document.querySelectorAll(`#${listId} .goal-row:not(.dragging)`)];
+
+  rows.forEach(r => r.classList.remove('drag-over'));
+
+  // Find which row we're hovering over
+  for (const row of rows) {
+    const rect = row.getBoundingClientRect();
+    if (clientY < rect.top + rect.height / 2) {
+      row.classList.add('drag-over');
+      break;
+    }
+  }
+}
+
+async function onDragEnd(e) {
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup',   onDragEnd);
+  document.removeEventListener('touchmove', onDragMove);
+  document.removeEventListener('touchend',  onDragEnd);
+
+  if (!dragEl) return;
+  dragEl.classList.remove('dragging');
+
+  const listId   = dragType + '-list';
+  const overEl   = document.querySelector(`#${listId} .drag-over`);
+  document.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+
+  if (overEl && overEl !== dragEl) {
+    const overId   = parseInt(overEl.dataset.id);
+    const typeGoals = goals.filter(g => g.type === dragType);
+    const fromIdx  = typeGoals.findIndex(g => g.id === dragId);
+    const toIdx    = typeGoals.findIndex(g => g.id === overId);
+
+    if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
+      // Reorder in memory
+      const [moved] = typeGoals.splice(fromIdx, 1);
+      typeGoals.splice(toIdx, 0, moved);
+
+      // Reassign order values
+      typeGoals.forEach((g, i) => { g.order = i; });
+
+      // Update goals array
+      goals = goals.filter(g => g.type !== dragType).concat(typeGoals);
+      render();
+
+      // Persist to backend
+      try {
+        await Promise.all(typeGoals.map((g, i) =>
+          api(`/api/goals/${g.id}`, { method: 'PATCH', body: JSON.stringify({ order: i }) })
+        ));
+      } catch (err) {
+        console.error('reorder failed:', err);
+        toast('couldn\'t save order');
+      }
+    }
+  }
+
+  dragId = null; dragType = null; dragEl = null;
+}
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
 
