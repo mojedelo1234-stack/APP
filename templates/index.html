@@ -75,6 +75,22 @@
   .journal-del:hover{color:#8b5a5a}
   .journal-entry-text{font-size:14px;font-weight:300;line-height:1.7;color:#999;white-space:pre-wrap;word-break:break-word}
 
+  /* Accordion entries */
+  .acc-entry{border-bottom:1px solid #1a1a1a}
+  .acc-entry:last-child{border-bottom:none}
+  .acc-header{display:flex;align-items:center;justify-content:space-between;padding:13px 0;cursor:pointer;user-select:none}
+  .acc-header:active{opacity:.6}
+  .acc-date{font-size:12px;color:#555;letter-spacing:.04em}
+  .acc-right{display:flex;align-items:center;gap:10px}
+  .acc-chevron{width:14px;height:14px;color:#444;transition:transform .2s;flex-shrink:0}
+  .acc-entry.open .acc-chevron{transform:rotate(180deg)}
+  .acc-body{overflow:hidden;max-height:0;transition:max-height .25s ease}
+  .acc-entry.open .acc-body{max-height:600px}
+  .acc-body-inner{padding:2px 0 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .acc-text{font-size:14px;font-weight:300;line-height:1.7;color:#999;white-space:pre-wrap;word-break:break-word;flex:1}
+  .acc-del{background:none;border:none;color:#2a2a2a;cursor:pointer;padding:2px;transition:color .15s;display:flex;flex-shrink:0;margin-top:2px}
+  .acc-del:hover{color:#8b5a5a}
+
   /* Gratitude inputs */
   .gratitude-inputs{display:flex;flex-direction:column;gap:0}
   .gratitude-input-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #1e1e1e}
@@ -435,6 +451,34 @@ function startEdit(id) {
 document.getElementById('daily-input').addEventListener('keydown', e => { if (e.key === 'Enter') addGoal('daily'); });
 document.getElementById('todo-input').addEventListener('keydown',  e => { if (e.key === 'Enter') addGoal('todo'); });
 
+// ─── Accordion helpers ───────────────────────────────────────────────────────
+
+function accEntryHTML(prefix, id, ts, text, deleteFn) {
+  return `<div class="acc-entry" id="${prefix}-${id}">
+    <div class="acc-header">
+      <span class="acc-date">${esc(entryDateLabel(ts))}</span>
+      <div class="acc-right">
+        <svg class="acc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner">
+        <div class="acc-text">${esc(text)}</div>
+        <button class="acc-del" onclick="event.stopPropagation();${deleteFn}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleAcc(el) {
+  el.classList.toggle('open');
+}
+
 // ─── Gratitude ───────────────────────────────────────────────────────────────
 
 async function loadGratitude() {
@@ -444,19 +488,8 @@ async function loadGratitude() {
     const listEl  = document.getElementById('gratitude-list');
     countEl.textContent = rows.length || '';
     if (!rows.length) { listEl.innerHTML = '<div class="empty">no entries yet</div>'; return; }
-    listEl.innerHTML = rows.map(r => `
-      <div class="journal-entry" id="grat-entry-${r.id}">
-        <div class="journal-entry-meta">
-          <span class="journal-entry-date">${esc(entryDateLabel(r.created_at))}</span>
-          <button class="journal-del" onclick="deleteGratitude(${r.id})">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
-        <div class="journal-entry-text">${esc(r.entry)}</div>
-      </div>`).join('');
+    listEl.innerHTML = rows.map(r => accEntryHTML('grat-entry', r.id, r.created_at, r.entry, `deleteGratitude(${r.id})`)).join('');
+    listEl.querySelectorAll('.acc-header').forEach(h => h.addEventListener('click', () => toggleAcc(h.parentElement)));
   } catch (e) {
     console.error('loadGratitude failed:', e);
     document.getElementById('gratitude-list').innerHTML = '<div class="empty">couldn\'t load</div>';
@@ -494,9 +527,9 @@ async function saveGratitude() {
 
 async function deleteGratitude(id) {
   const entry = document.getElementById('grat-entry-' + id);
-  const text  = entry ? entry.querySelector('.journal-entry-text').textContent : '';
+  const text  = entry ? entry.querySelector('.acc-text').textContent : '';
   if (entry) entry.remove();
-  const remaining = document.querySelectorAll('#gratitude-list .journal-entry').length;
+  const remaining = document.querySelectorAll('#gratitude-list .acc-entry').length;
   document.getElementById('gratitude-count').textContent = remaining || '';
   if (!remaining) document.getElementById('gratitude-list').innerHTML = '<div class="empty">no entries yet</div>';
   toast('deleted', async () => {
@@ -515,19 +548,8 @@ async function loadNotes() {
     const listEl  = document.getElementById('notes-list');
     countEl.textContent = rows.length || '';
     if (!rows.length) { listEl.innerHTML = '<div class="empty">no entries yet</div>'; return; }
-    listEl.innerHTML = rows.map(r => `
-      <div class="journal-entry" id="note-entry-${r.id}">
-        <div class="journal-entry-meta">
-          <span class="journal-entry-date">${esc(entryDateLabel(r.created_at))}</span>
-          <button class="journal-del" onclick="deleteNote(${r.id})">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
-        <div class="journal-entry-text">${esc(r.entry)}</div>
-      </div>`).join('');
+    listEl.innerHTML = rows.map(r => accEntryHTML('note-entry', r.id, r.created_at, r.entry, `deleteNote(${r.id})`)).join('');
+    listEl.querySelectorAll('.acc-header').forEach(h => h.addEventListener('click', () => toggleAcc(h.parentElement)));
   } catch (e) {
     console.error('loadNotes failed:', e);
     document.getElementById('notes-list').innerHTML = '<div class="empty">couldn\'t load</div>';
@@ -558,9 +580,9 @@ async function saveNote() {
 
 async function deleteNote(id) {
   const entry = document.getElementById('note-entry-' + id);
-  const text  = entry ? entry.querySelector('.journal-entry-text').textContent : '';
+  const text  = entry ? entry.querySelector('.acc-text').textContent : '';
   if (entry) entry.remove();
-  const remaining = document.querySelectorAll('#notes-list .journal-entry').length;
+  const remaining = document.querySelectorAll('#notes-list .acc-entry').length;
   document.getElementById('notes-count').textContent = remaining || '';
   if (!remaining) document.getElementById('notes-list').innerHTML = '<div class="empty">no entries yet</div>';
   toast('deleted', async () => {
@@ -579,19 +601,8 @@ async function loadDreams() {
     const listEl  = document.getElementById('dreams-list');
     countEl.textContent = dreams.length || '';
     if (!dreams.length) { listEl.innerHTML = '<div class="empty">no entries yet</div>'; return; }
-    listEl.innerHTML = dreams.map(d => `
-      <div class="journal-entry" id="dream-${d.id}">
-        <div class="journal-entry-meta">
-          <span class="journal-entry-date">${esc(entryDateLabel(d.created_at))}</span>
-          <button class="journal-del" aria-label="Delete dream" onclick="deleteDream(${d.id})">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-          </button>
-        </div>
-        <div class="journal-entry-text">${esc(d.entry)}</div>
-      </div>`).join('');
+    listEl.innerHTML = dreams.map(d => accEntryHTML('dream', d.id, d.created_at, d.entry, `deleteDream(${d.id})`)).join('');
+    listEl.querySelectorAll('.acc-header').forEach(h => h.addEventListener('click', () => toggleAcc(h.parentElement)));
   } catch (e) {
     console.error('loadDreams failed:', e);
     document.getElementById('dreams-list').innerHTML = '<div class="empty">couldn\'t load dreams</div>';
@@ -623,10 +634,10 @@ async function saveDream() {
 
 async function deleteDream(id) {
   const entry  = document.getElementById('dream-' + id);
-  const textEl = entry ? entry.querySelector('.journal-entry-text') : null;
+  const textEl = entry ? entry.querySelector('.acc-text') : null;
   const text   = textEl ? textEl.textContent : '';
   if (entry) entry.remove();
-  const remaining = document.querySelectorAll('#dreams-list .journal-entry').length;
+  const remaining = document.querySelectorAll('#dreams-list .acc-entry').length;
   document.getElementById('dream-count').textContent = remaining || '';
   if (!remaining) document.getElementById('dreams-list').innerHTML = '<div class="empty">no entries yet</div>';
   toast('deleted dream', async () => {
